@@ -11,6 +11,8 @@ looks up the user in the session store (Redis), and attaches the user object
 to the request context. Unauthenticated requests are rejected with a 401...
 ```
 
+![demo](demo.gif)
+
 [![PyPI version](https://img.shields.io/pypi/v/askmycode.svg)](https://pypi.org/project/askmycode/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
