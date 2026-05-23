@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "askmycode"
-version = "0.1.0"
+version = "0.1.1"
 description = "Ask questions about any codebase using AI — your code stays private"
 readme = "README.md"
 requires-python = ">=3.9"
