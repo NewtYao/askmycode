@@ -52,7 +52,7 @@ pip install askmycode
 
 Or from source:
 ```bash
-git clone https://github.com/yourusername/askmycode
+git clone https://github.com/NewtYao/askmycode
 cd askmycode
 pip install -e .
 ```
