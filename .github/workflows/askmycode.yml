@@ -1,0 +1,77 @@
+name: askmycode — Answer PR questions
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  answer:
+    # Trigger only on PR comments that start with /ask
+    if: >
+      github.event.issue.pull_request != null &&
+      startsWith(github.event.comment.body, '/ask ')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install askmycode
+        run: pip install askmycode
+
+      - name: Index codebase
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: askmycode index .
+
+      - name: Extract question from comment
+        id: question
+        run: |
+          COMMENT="${{ github.event.comment.body }}"
+          QUESTION="${COMMENT#/ask }"
+          echo "question=$QUESTION" >> "$GITHUB_OUTPUT"
+
+      - name: Ask question
+        id: answer
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          ANSWER=$(askmycode ask "${{ steps.question.outputs.question }}" --sources)
+          # Store multi-line output safely
+          {
+            echo "answer<<EOF"
+            echo "$ANSWER"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post answer as PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const question = `${{ steps.question.outputs.question }}`;
+            const answer = `${{ steps.answer.outputs.answer }}`;
+            const body = [
+              `**Q: ${question}**`,
+              "",
+              answer,
+              "",
+              "_— answered by [askmycode](https://github.com/yourusername/askmycode)_"
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

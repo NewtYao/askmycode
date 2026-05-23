@@ -1,0 +1,12 @@
+# askmycode project configuration
+# Commit this file to share settings with your team.
+
+[askmycode]
+# LLM provider: gemini (default), openai, anthropic, ollama
+# provider = "gemini"
+
+# Model override (leave blank for provider default)
+# model = "gemini-2.5-flash-lite"
+
+# Number of code chunks retrieved per question (default: 8)
+# n_results = 8
