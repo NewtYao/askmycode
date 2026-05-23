@@ -27,12 +27,14 @@ def get_api_key(provider: str = "gemini") -> str | None:
     env_var = _ENV_KEYS.get(provider, f"{provider.upper()}_API_KEY")
     if key := os.environ.get(env_var):
         return key
-    return _load().get("api_key")
-
-
-def set_api_key(key: str) -> None:
     data = _load()
-    data["api_key"] = key
+    # per-provider store, fallback to legacy "api_key" for backwards compat
+    return data.get("api_keys", {}).get(provider) or data.get("api_key")
+
+
+def set_api_key(key: str, provider: str = "gemini") -> None:
+    data = _load()
+    data.setdefault("api_keys", {})[provider] = key
     _save(data)
 
 

@@ -19,7 +19,7 @@ jobs:
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: refs/pull/${{ github.event.issue.number }}/head
           fetch-depth: 0
 
       - name: Set up Python
@@ -37,8 +37,9 @@ jobs:
 
       - name: Extract question from comment
         id: question
+        env:
+          COMMENT: ${{ github.event.comment.body }}
         run: |
-          COMMENT="${{ github.event.comment.body }}"
           QUESTION="${COMMENT#/ask }"
           echo "question=$QUESTION" >> "$GITHUB_OUTPUT"
 
@@ -46,8 +47,9 @@ jobs:
         id: answer
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          QUESTION: ${{ steps.question.outputs.question }}
         run: |
-          ANSWER=$(askmycode ask "${{ steps.question.outputs.question }}" --sources)
+          ANSWER=$(askmycode ask "$QUESTION" --sources)
           # Store multi-line output safely
           {
             echo "answer<<EOF"
@@ -57,10 +59,13 @@ jobs:
 
       - name: Post answer as PR comment
         uses: actions/github-script@v7
+        env:
+          QUESTION: ${{ steps.question.outputs.question }}
+          ANSWER: ${{ steps.answer.outputs.answer }}
         with:
           script: |
-            const question = `${{ steps.question.outputs.question }}`;
-            const answer = `${{ steps.answer.outputs.answer }}`;
+            const question = process.env.QUESTION;
+            const answer = process.env.ANSWER;
             const body = [
               `**Q: ${question}**`,
               "",

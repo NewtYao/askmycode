@@ -2,6 +2,9 @@ from typing import Iterator
 from google import genai
 from google.genai import types
 
+_GEMINI_ROLE = {"user": "user", "model": "model", "assistant": "model"}
+_OPENAI_ROLE = {"user": "user", "model": "assistant", "assistant": "assistant"}
+
 _SYSTEM = """\
 You are a helpful assistant that answers questions about a software codebase.
 You are given relevant code snippets retrieved from the codebase and a question.
@@ -41,13 +44,16 @@ def _stream_gemini(
     question: str,
     context: str,
     api_key: str,
-    history: list[types.Content] | None,
+    history: list[dict] | None,
     file_tree: str,
     model: str,
 ) -> Iterator[str]:
     client = genai.Client(api_key=api_key)
     user_turn = _build_user_turn(question, context, file_tree)
-    contents = list(history or []) + [_make_turn("user", user_turn)]
+    contents = [
+        _make_turn(_GEMINI_ROLE.get(h["role"], h["role"]), h["content"])
+        for h in (history or [])
+    ] + [_make_turn("user", user_turn)]
     for chunk in client.models.generate_content_stream(
         model=model,
         contents=contents,
@@ -72,7 +78,7 @@ def _stream_openai(
     user_turn = _build_user_turn(question, context, file_tree)
     messages = [{"role": "system", "content": _SYSTEM}]
     for h in history or []:
-        messages.append({"role": h["role"], "content": h["content"]})
+        messages.append({"role": _OPENAI_ROLE.get(h["role"], h["role"]), "content": h["content"]})
     messages.append({"role": "user", "content": user_turn})
     with client.chat.completions.create(model=model, messages=messages, stream=True) as stream:
         for chunk in stream:
@@ -96,7 +102,7 @@ def _stream_anthropic(
     user_turn = _build_user_turn(question, context, file_tree)
     messages = []
     for h in history or []:
-        messages.append({"role": h["role"], "content": h["content"]})
+        messages.append({"role": _OPENAI_ROLE.get(h["role"], h["role"]), "content": h["content"]})
     messages.append({"role": "user", "content": user_turn})
     with client.messages.stream(
         model=model,
@@ -122,7 +128,7 @@ def _stream_ollama(
     user_turn = _build_user_turn(question, context, file_tree)
     messages = [{"role": "system", "content": _SYSTEM}]
     for h in history or []:
-        messages.append({"role": h["role"], "content": h["content"]})
+        messages.append({"role": _OPENAI_ROLE.get(h["role"], h["role"]), "content": h["content"]})
     messages.append({"role": "user", "content": user_turn})
     resp = requests.post(
         f"{base_url}/api/chat",
@@ -145,7 +151,7 @@ def answer_stream(
     question: str,
     context: str,
     api_key: str,
-    history=None,
+    history: list[dict] | None = None,
     file_tree: str = "",
     provider: str = "gemini",
     model: str = "",

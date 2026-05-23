@@ -56,9 +56,8 @@ def _ast_chunks(content: str, lines: list[str], relative: str) -> list[dict] | N
         return None
 
     top_nodes = [
-        n for n in ast.walk(tree)
+        n for n in tree.body
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-        and isinstance(getattr(n, "col_offset", -1), int) and n.col_offset == 0
     ]
     if not top_nodes:
         return None

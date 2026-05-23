@@ -6,8 +6,6 @@ from google.genai.errors import ClientError, ServerError
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from google.genai import types as genai_types
-
 from askmycode import config, indexer, llm, manifest, project_config, retriever, store
 
 app = typer.Typer(
@@ -108,6 +106,9 @@ def ask(
     except ServerError as e:
         console.print(f"\n[red]Gemini server error:[/red] {e}")
         raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"\n[red]Error:[/red] {e}")
+        raise typer.Exit(1)
 
     if sources and metadatas:
         seen: set = set()
@@ -202,7 +203,7 @@ def chat(
 
     console.print("[bold]askmycode chat[/bold] — type your question, [dim]exit[/dim] or Ctrl+C to quit.\n")
 
-    history: list[genai_types.Content] = []
+    history: list[dict] = []
     file_tree = llm.build_file_tree(list(manifest.load(project).keys()))
 
     while True:
@@ -238,11 +239,14 @@ def chat(
         except (ClientError, ServerError) as e:
             console.print(f"\n[red]Error:[/red] {e}\n")
             continue
+        except Exception as e:
+            console.print(f"\n[red]Error:[/red] {e}\n")
+            continue
 
         # Append this turn to history for follow-up context
         user_turn = f"Context:\n{context}\n\nQuestion: {question}"
-        history.append(llm._make_turn("user", user_turn))
-        history.append(llm._make_turn("model", "".join(answer_parts)))
+        history.append({"role": "user", "content": user_turn})
+        history.append({"role": "model", "content": "".join(answer_parts)})
 
 
 @app.command()
@@ -282,10 +286,12 @@ app.add_typer(_config_app, name="config")
 @_config_app.command("set-key")
 def config_set_key(
     api_key: str = typer.Argument(..., help="Your API key"),
+    provider: str = typer.Option("", "--provider", "-p", help="Provider this key is for (default: current provider)"),
 ) -> None:
     """Save your API key to ~/.config/askmycode/config.json."""
-    config.set_api_key(api_key)
-    console.print("[green]API key saved.[/green]")
+    prov = provider or config.get_provider()
+    config.set_api_key(api_key, prov)
+    console.print(f"[green]API key saved for provider '{prov}'.[/green]")
 
 
 @_config_app.command("set-provider")
